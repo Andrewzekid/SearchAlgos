@@ -128,13 +128,65 @@ class Grid {
 
         };
         return came_from;
+
     };
+    backTrack(startNode,targetNode,came_from,mode="id") {
+        //backtrack from startNode or targetNode. Takes in argument mode, determining if we should backtrack using id or the object itself.
+        const path = [];
+        let previous;
+        if(mode === "id") {
+            while(startNode.id !== targetNode.id) {
+                previous = came_from[targetNode.id];
+                path.push(previous); //add the previous node to the 
+                targetNode = previous;
+            };
+        } else if (mode === "object") {
+            while(startNode !== targetNode) {
+                previous = came_from[targetNode];
+                path.push(previous); //add the previous node to the 
+                targetNode = previous;
+            };
+        }
+       
+        return path;
+    }
     greedyBestFirstSearch(startNode,endNode) {
         //initialize open and closed lists
         const openList = new PriorityQueue();
         const closedList = new Map();
+        let counter = 0;
+        let found = false;
+        //add startnode into open list
+        closedList[startNode] = null;
+        openList.push(startNode);
+        let current;
+        while (!(openList.isEmpty())){
+            current = openList.pop();
+            if (current.id === endNode.id){
+                found = true;
+                break
+            }
+            //increment counter for changing background purposes
+            counter++;
+            console.log("current node is:",current);
+            setTimeout(() => {
+                console.log("Changing bg color!");
+                current.node.style.backgroundColor += "red";
+                },2000+(counter*20)); //set a timeout to run the background color change
 
-        openList.push()
+
+            for(let next of grid.getNeighbors(current)){
+                if(!(closedList.has(next))){
+                    //we havent explored next before
+                    let priority = Grid.SLD(next,endNode);
+                    next.value = priority;
+                    openList.push(next);
+                    closedList[next] = current;
+                }
+            }
+        };
+        return found == true ?  this.backTrack(startNode,endNode,closedList,mode="object") : null;
+
 
 
     }
@@ -146,7 +198,7 @@ const leftChild = (i) => ((i << 1) + 1);
 
 class PriorityQueue {
 
-    constructor(comparator=(a,b) => {return a <= b //min heap
+    constructor(comparator=(a,b) => {return a.value <= b.value //min heap
     }) {
         this._comparator = comparator;
         this._heap = [];
@@ -230,10 +282,10 @@ class PriorityQueue {
         return popped;
 
     }
-    replace(value) {
+    replace(node) {
         const replacedValue = this.peek();
-        this._heap[0] = value;
-        this.shiftDown();
+        this._heap[0] = node;
+        this._shiftDown();
         return replacedValue;
       }
            
@@ -244,6 +296,7 @@ class Node {
     constructor(x,y,idx_x,idx_y){
         //x and y are the top left corner of the node
         this.x = x;
+        this.value = 100000; //used for priority queue
         this.y = y;
         this.isWall = false; //is wall or not
         this.idx_x = idx_x;
