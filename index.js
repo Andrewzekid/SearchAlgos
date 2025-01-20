@@ -140,15 +140,24 @@ class Grid {
                 path.push(previous); //add the previous node to the 
                 targetNode = previous;
             };
+            return path;
         } else if (mode === "object") {
-            while(startNode !== targetNode) {
-                previous = came_from[targetNode];
+            console.log(came_from);
+            console.log(came_from.has(targetNode),came_from.get(targetNode))
+            console.log(targetNode);
+            while(startNode !== targetNode && came_from.has(targetNode)) {
+                console.log(`Previohs node: ${previous}`);
+                previous = came_from.get(targetNode);
+                console.log(`New node: ${previous}`);
                 path.push(previous); //add the previous node to the 
                 targetNode = previous;
+                
+                
             };
+            return path;
         }
        
-        return path;
+    
     }
     greedyBestFirstSearch(startNode,endNode) {
         //initialize open and closed lists
@@ -157,7 +166,7 @@ class Grid {
         let counter = 0;
         let found = false;
         //add startnode into open list
-        closedList[startNode] = null;
+        closedList.set(startNode,null);
         openList.push(startNode);
         let current;
         while (!(openList.isEmpty())){
@@ -168,24 +177,26 @@ class Grid {
             }
             //increment counter for changing background purposes
             counter++;
-            console.log("current node is:",current);
+            const nodeToColor = current.node;
             setTimeout(() => {
                 console.log("Changing bg color!");
-                current.node.style.backgroundColor += "red";
+                nodeToColor.style.backgroundColor = "red";
                 },2000+(counter*20)); //set a timeout to run the background color change
 
 
-            for(let next of grid.getNeighbors(current)){
+            for(let next of current.getNeighbors(grid)){
                 if(!(closedList.has(next))){
                     //we havent explored next before
+                    console.log(`Adding ${next.x} ${next.y} to closedList!`)
                     let priority = Grid.SLD(next,endNode);
                     next.value = priority;
                     openList.push(next);
-                    closedList[next] = current;
+                    closedList.set(next,current);
                 }
             }
         };
-        return found == true ?  this.backTrack(startNode,endNode,closedList,mode="object") : null;
+        console.log(closedList);
+        return found == true ?  this.backTrack(startNode,endNode,closedList,"object") : null;
 
 
 
@@ -216,53 +227,63 @@ class PriorityQueue {
         //swap element at index i with element at index j
         [this._heap[i],this._heap[j]] = [this._heap[j],this._heap[i]];
     }
-    _shiftUp(){
-        //rebalance the binary tree from the bottom up so that it satisfies the invariant property
-        let bottomidx = this._heap.length - 1;
-        let parentidx = parent(bottomidx);
 
-        let parentValue = this._heap[parentidx];
-        let bottomValue = this._heap[bottomidx];
-
-        while(!(this._comparator(parentValue,bottomValue)) && (parentidx >= 0)) {
-            //while heap invariant is not satisfied (the bottom value is the leaf node is smaller than it's parent)
-            // and we are not at the top of the tree, swap the parent and the leaf.
-            this.swap(bottomidx,parentidx);
-            bottomidx = parentidx;
-            parentidx = parent(bottomidx);
-            let parentValue = this._heap[parentidx];
-            let bottomValue = this._heap[bottomidx];
+    _shiftUp() {
+        // Rebalance the binary tree from the bottom up so that it satisfies the invariant property
+        let bottomIdx = this.size() - 1;
+    
+        while (bottomIdx > 0) {
+            let parentIdx = parent(bottomIdx);
+    
+            // Get parent and bottom values
+            let parentValue = this._heap[parentIdx];
+            let bottomValue = this._heap[bottomIdx];
+    
+            // If the heap invariant is satisfied, exit
+            if (this._comparator(parentValue, bottomValue)) {
+                break;
+            }
+    
+            // Swap and continue shifting up
+            this.swap(bottomIdx, parentIdx);
+            bottomIdx = parentIdx;
         }
     }
-    _shiftDown() {
-            //rebalance the binary tree from the top down so that it satisfies the invariant property. 
-            let topIdx = 0
-            let right = rightChild(topIdx);
-            let left = leftChild(topIdx);
+    
+ _shiftDown() {
+    // Rebalance the binary tree from the top down so that it satisfies the invariant property. 
+    let topIdx = 0;
 
-            //set values
-            let topValue = this._heap[topIdx];
-            let leftValue = this._heap[left];
-            let rightValue = this._heap[right];
-            while((!(this._comparator(topValue,leftValue)) || !(this._comparator(topValue,rightValue))) 
-                && (left < this.size() && right < this.size())){
-                    //while the heap invariant is not satisfied => either the left or right value is smaller than the parent   
-                    if(this._comparator(leftValue,rightValue)) {
-                        this.swap(topIdx,left)
-                        topIdx = left;
+    while (true) {
+        let left = leftChild(topIdx);
+        let right = rightChild(topIdx);
 
-                    } else {
-                        this.swap(topIdx,right);
-                        topIdx = right;
-                    } 
+        // Set initial topValue
+        let topValue = this._heap[topIdx];
+        let leftValue = left < this.size() ? this._heap[left] : undefined; // Check bounds
+        let rightValue = right < this.size() ? this._heap[right] : undefined; // Check bounds
 
-                    right = rightChild(topIdx);
-                    left = leftChild(topIdx);
-                    topValue = this._heap[topIdx];
-                    leftValue = this._heap[left];
-                    rightValue = this._heap[right];
-                }
+        // Determine which child to swap with
+        let swapIdx = null;
+        if (leftValue !== undefined && !this._comparator(topValue, leftValue)) {
+            swapIdx = left;
         }
+        if (rightValue !== undefined && 
+            (!this._comparator(topValue, rightValue)) && 
+            (swapIdx === null || this._comparator(rightValue, this._heap[swapIdx]))) {
+            swapIdx = right;
+        }
+
+        // If no swap is needed, the heap is balanced
+        if (swapIdx === null) {
+            break;
+        }
+
+        // Swap with the child and continue shifting down
+        this.swap(topIdx, swapIdx);
+        topIdx = swapIdx;
+    }
+}
     push(...values) {
         values.forEach(value => {
             this._heap.push(value); //add to last index of heap
@@ -359,7 +380,7 @@ class Node {
                 if(j < 0 || j > grid.gridWidth - 1 || ((j == idx_x) && (i==idx_y))) { //make sure we do not have a row of -1.
                     continue inner;
                 } else {
-                    console.log(`Row:${i} Column:${j}`);
+                    // console.log(`Row:${i} Column:${j}`);
                     if((idx_x % 2 !==0 && idx_y%2==0) || (idx_x%2==0 && idx_y%2!==0)){ //if one is odd and one is even
                         if((j + i) %2 !== 0) {
                             //skip if sum is odd
@@ -410,7 +431,13 @@ let cell2 = grid.grid[6][6];
 cell2.node.style.backgroundColor = "blue";
 cell10.node.style.backgroundColor = "green";
 const priorityQueue = new PriorityQueue();
-
+let cell5 = grid.grid[3][1];
+let cell6 = grid.grid[4][10];
+let cell7 = grid.grid[10][5];
+cell5.value = 10;
+cell6.value = 40;
+cell7.value = 60;
+priorityQueue.push(cell5,cell6,cell7);
 
 document.addEventListener("keydown",(event)=>{
     console.log(`key: ${event.key} code: ${event.code}`);
@@ -418,7 +445,14 @@ document.addEventListener("keydown",(event)=>{
         console.log("Initiating search!");
         setTimeout(() => {
             //mark the end node
-            grid.breadthFirstSearch(cell10,cell2);
+            let path = grid.greedyBestFirstSearch(cell10,cell2);
+            let counter = 0;
+            path.forEach(node => {
+                counter++;
+                setTimeout(() => {console.log(`${node.x} ${node.y}`);
+                node.node.style.backgroundColor = "purple";},6000+(counter*30));
+                
+            });         
            },3000);
     };
    
